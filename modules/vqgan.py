@@ -68,7 +68,8 @@ class VQGAN(nn.Module):
             vqvae_ret["x_hat"], torch.ones_like(vqvae_ret["x_hat"])
         )
         lam = self.calculate_lambda(preceptual_recon_loss, adv_loss)
-        adv_loss = (lam * adv_loss) if self.use_adv else torch.zeros_like(adv_loss)
+        disc_weight = 1.0 if self.use_adv else 0.0
+        adv_loss = disc_weight * lam * adv_loss
 
         total_loss = preceptual_recon_loss + commit_loss + adv_loss 
 
@@ -91,6 +92,9 @@ class VQGAN(nn.Module):
             self.discrimator_loss(disc_real, torch.ones_like(disc_real))
             + self.discrimator_loss(disc_fake, torch.zeros_like(disc_fake))
         ) / 2
+
+        disc_weight = 1.0 if self.use_adv else 0.0
+        disc_loss = disc_weight * disc_loss
 
         ret = {
             "disc_real": disc_real.mean(),
