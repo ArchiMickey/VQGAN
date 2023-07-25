@@ -9,7 +9,7 @@ train_params:
   optimizer:
     use_8bit: true
     lr: 4.5e-6
-  disc_start: 10000
+  disc_start: 0
 
 data:
   paths:
@@ -17,6 +17,9 @@ data:
   img_size: 256
 
 model:
+  model_ckpt: /home/archimickey/Projects/VQGAN/checkpoints/checkpoint_10000.pt
+  loading_modules:
+    - vqvae
   vqvae:
     dim: 32
     dim_mults: [1, 2, 4, 8]
@@ -24,7 +27,7 @@ model:
     codebook_dim: 256 
     codebook_size: 1024
   discriminator:
-    dim: 32
+    dim: 64
     dim_mults: [1, 2, 4, 8]
     channels: 3
   perceptual_weight: 1

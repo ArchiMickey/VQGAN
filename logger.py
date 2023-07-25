@@ -99,8 +99,8 @@ class Logger:
             self.log_to_wandb()
             self.global_step = training_step_ret["global_step"]
 
-        if self.global_step != 0 and self.global_step % self.save_interval == 0:
-            self.save_checkpoint(training_step_ret)
+            if self.global_step != 0 and self.global_step % self.save_interval == 0:
+                self.save_checkpoint(training_step_ret)
 
         losses = training_step_ret["losses"]
         for k, v in losses.items():

@@ -1,3 +1,4 @@
+from loguru import logger
 import torch.nn as nn
 import torch
 
@@ -21,9 +22,26 @@ class VQGAN(nn.Module):
 
         self.use_adv = False
         self.perceptual_weight = config["perceptual_weight"]
+
+        if config["model_ckpt"] is not None:
+            logger.info(f"Loading checkpoint from {config['model_ckpt']}")
+            self.load_checkpoint(config["model_ckpt"], config["loading_modules"])
+
     
     def enable_adv(self):
         self.use_adv = True
+
+    def load_checkpoint(self, checkpoint_path, loading_module=None):
+        available_modules = ["vqvae", "discriminator"]
+        ckpt = torch.load(checkpoint_path, map_location="cpu")
+
+        if loading_module is None:
+            for module in available_modules:
+                getattr(self, module).load_state_dict(ckpt[module])
+
+        else:
+            for module in loading_module:
+                getattr(self, module).load_state_dict(ckpt[module])
     
     def calculate_lambda(self, nll_loss, gan_loss):
         last_layer = self.vqvae.decoder.final_conv

@@ -100,7 +100,7 @@ def main(config):
                     optimizer_d.zero_grad()
                     
                     global_step += 1
-                    if global_step == train_params["disc_start"]:
+                    if global_step >= train_params["disc_start"] and not model.use_adv:
                         console_logger.info(
                             f"Start using discriminator at step {global_step}"
                         )
