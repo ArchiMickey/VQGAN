@@ -16,6 +16,7 @@ class ImageDataset(Dataset):
             logger.info(f"Loading images from {path}...")
             images_in_path = os.listdir(path)
             self.images += [os.path.join(path, image) for image in images_in_path]
+        self.images.sort()
 
         self.img_size = img_size
         self.transform = Compose(
