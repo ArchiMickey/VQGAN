@@ -3,7 +3,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 from einops.layers.torch import Rearrange
+from collections import namedtuple
 
+CONFIG = namedtuple('FlashAttentionConfig', ['enable_flash', 'enable_math', 'enable_mem_efficient'])
+device_properties = torch.cuda.get_device_properties(torch.device('cuda'))
+if device_properties.major == 8 and device_properties.minor == 0:
+    cuda_config = CONFIG(True, False, False)
+else:
+    cuda_config = CONFIG(False, True, True)
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
@@ -110,7 +117,7 @@ class Attention(nn.Module):
         )
         q = q * self.scale
 
-        with torch.backends.cuda.sdp_kernel(enable_flash=True):
+        with torch.backends.cuda.sdp_kernel(**cuda_config._asdict()):
             q, k, v = map(lambda t: t.contiguous(), (q, k, v))
             out = F.scaled_dot_product_attention(q, k, v)
         out = rearrange(out, "b h (x y) d -> b (h d) x y", x=h, y=w)
