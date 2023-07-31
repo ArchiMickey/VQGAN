@@ -1,6 +1,6 @@
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
-from torchvision.transforms import Compose, Normalize, ToTensor, CenterCrop
+from torchvision.transforms import Compose, Normalize, ToTensor, Resize 
 import os
 import numpy as np
 from loguru import logger
@@ -20,7 +20,7 @@ class ImageDataset(Dataset):
 
         self.img_size = img_size
         self.transform = Compose(
-            [CenterCrop(img_size), ToTensor(), Normalize((0.5,), (0.5,))]
+            [Resize(img_size), ToTensor(), Normalize((0.5,), (0.5,))]
         )
 
     def __len__(self):
