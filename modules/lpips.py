@@ -8,6 +8,7 @@ from hydra.utils import get_original_cwd
 
 import os, hashlib
 import requests
+from torchvision.models.vgg import VGG16_Weights
 from tqdm import tqdm
 
 URL_MAP = {"vgg_lpips": "https://heibox.uni-heidelberg.de/f/607503859c864bc1b30b/?dl=1"}
@@ -137,7 +138,10 @@ class NetLinLayer(nn.Module):
 class vgg16(torch.nn.Module):
     def __init__(self, requires_grad=False, pretrained=True):
         super(vgg16, self).__init__()
-        vgg_pretrained_features = models.vgg16(pretrained=pretrained).features
+        if pretrained:
+            vgg_pretrained_features = models.vgg16(weights=VGG16_Weights.DEFAULT).features
+        else:
+            vgg_pretrained_features = models.vgg16().features
         self.slice1 = torch.nn.Sequential()
         self.slice2 = torch.nn.Sequential()
         self.slice3 = torch.nn.Sequential()
