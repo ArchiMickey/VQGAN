@@ -13,12 +13,14 @@ from modules.vqgan import VQGAN
 from dataset import ImageDataset
 from logger import Logger
 from loguru import logger as console_logger
+from rich import print as rprint
 
 
-@hydra.main(config_path="config", config_name="debug")
+@hydra.main(version_base=None, config_path="config", config_name="debug")
 def main(config):
     # Load config
-    ic(dict(config))
+    rprint("Config:")
+    rprint(dict(config))
     train_params = config["train_params"]
     torch.set_float32_matmul_precision("high")
 

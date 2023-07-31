@@ -6,7 +6,7 @@ from torchvision.transforms import ToPILImage
 from PIL import Image
 import torch
 from loguru import logger as console_logger
-from rich.pretty import pretty_repr
+from rich import print as rprint
 
 
 class Logger:
@@ -28,9 +28,12 @@ class Logger:
 
         self.global_step = 0
         self.epoch = 0
-
+        
         wandb.init(
-            project=config["project"], name=config["name"], dir=f"{get_original_cwd()}"
+            project=config["project"],
+            name=config["name"],
+            dir=f"{get_original_cwd()}",
+            config=dict(config),
         )
         self.transform = ToPILImage()
 
@@ -119,6 +122,6 @@ class Logger:
             log_dict[f"{k}_epoch"] = sum(v) / len(v)
         log_dict |= {"log_img": self.log_img(training_step_ret)}
         wandb.log(log_dict)
-        console_logger.info(pretty_repr(log_dict))
+        rprint(log_dict)
         for k in self.loss_list.keys():
             self.loss_list[k] = []
