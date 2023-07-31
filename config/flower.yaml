@@ -1,0 +1,47 @@
+project: vqgan
+name: vqgan-flower
+
+train_params:
+  seed: 42
+  batch_size: 8
+  grad_accumulation: 4
+  precision: bf16-mixed
+  optimizer:
+    use_8bit: true
+    lr: 4.5e-6
+  disc_start: 10000
+
+data:
+  paths:
+    - /home/archimickey/Projects/VQGAN/data/102flower/edited
+  img_size: 128
+
+model:
+  model_ckpt: null 
+  loading_modules:
+    - vqvae
+  vqvae:
+    dim: 128
+    dim_mults: [1, 1, 1, 2, 2, 4]
+    resnet_block_groups: 8 
+    codebook_dim: 512
+    codebook_size: 1024
+  discriminator:
+    dim: 64
+    dim_mults: [1, 2, 4, 8]
+    channels: 3
+  perceptual_weight: 1
+
+logger:
+  project: ${project}
+  checkpoint_path: /home/archimickey/Projects/VQGAN/checkpoints
+  save_interval: 10000
+  log_img_interval: 1
+  loss_names:
+    - generator/recon_loss
+    - generator/perceptual_loss
+    - generator/perceptual_recon_loss
+    - generator/commit_loss
+    - generator/adv_loss
+    - generator/total_loss
+    - discriminator/loss
