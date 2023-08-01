@@ -7,6 +7,7 @@ from PIL import Image
 import torch
 from loguru import logger as console_logger
 from rich import print as rprint
+from omegaconf import OmegaConf
 
 
 class Logger:
@@ -33,7 +34,7 @@ class Logger:
             project=config["project"],
             name=config["name"],
             dir=f"{get_original_cwd()}",
-            config=dict(config),
+            config=OmegaConf.to_container(config, resolve=True),
         )
         self.transform = ToPILImage()
 
