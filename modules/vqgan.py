@@ -2,7 +2,7 @@ from loguru import logger
 import torch.nn as nn
 import torch
 
-from modules.util import weights_init
+from modules.util import weights_init, hinge_d_loss 
 from modules.vqvae import VQVAE
 from modules.discriminator import Discriminator
 from modules.lpips import LPIPS
@@ -17,8 +17,9 @@ class VQGAN(nn.Module):
 
         self.recon_loss = lambda x, y: torch.abs(x.contiguous() - y.contiguous())
         self.perceptual_loss = LPIPS().eval()
+        self.adv_loss = lambda x: -torch.mean(x)
 
-        self.discrimator_loss = nn.BCEWithLogitsLoss()
+        self.discriminator_loss = hinge_d_loss
 
         self.use_adv = False
         self.perceptual_weight = config["perceptual_weight"]
@@ -82,9 +83,7 @@ class VQGAN(nn.Module):
 
         commit_loss = vqvae_ret["commit_loss"]
 
-        adv_loss = self.discrimator_loss(
-            vqvae_ret["x_hat"], torch.ones_like(vqvae_ret["x_hat"])
-        )
+        adv_loss = self.adv_loss(self.discriminator(vqvae_ret["x_hat"]))
         lam = self.calculate_lambda(preceptual_recon_loss, adv_loss)
         disc_weight = 1.0 if self.use_adv else 0.0
         adv_loss = disc_weight * lam * adv_loss
@@ -106,10 +105,7 @@ class VQGAN(nn.Module):
     def discriminator_step(self, generator_ret):
         disc_real = self.discriminator(generator_ret["x"])
         disc_fake = self.discriminator(generator_ret["x_hat"].detach())
-        disc_loss = (
-            self.discrimator_loss(disc_real, torch.ones_like(disc_real))
-            + self.discrimator_loss(disc_fake, torch.zeros_like(disc_fake))
-        ) / 2
+        disc_loss = self.discriminator_loss(disc_real, disc_fake)
 
         disc_weight = 1.0 if self.use_adv else 0.0
         disc_loss = disc_weight * disc_loss
