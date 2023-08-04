@@ -89,13 +89,13 @@ class Logger:
             log_dict[k] = sum(self.accumulated_ret["losses"][k]) / len(
                 self.accumulated_ret["losses"][k]
             )
-            self.accumulated_ret["losses"][k] = []
+            self.accumulated_ret["losses"][k].clear()
 
         for k in ["disc_real", "disc_fake"]:
             log_dict[f"discriminator/{k}"] = wandb.Histogram(
                 self.accumulated_ret["disc"][k]
             )
-            self.accumulated_ret["disc"][k] = []
+            self.accumulated_ret["disc"][k].clear()
         wandb.log(log_dict)
 
     def log_iter(self, training_step_ret):
@@ -112,8 +112,12 @@ class Logger:
             self.accumulated_ret["losses"][k].append(v.item())
 
         for k in ["disc_real", "disc_fake"]:
-            self.accumulated_ret["disc"][k].append(
-                training_step_ret["discriminator_ret"][k].cpu().detach()
+            self.accumulated_ret["disc"][k].extend(
+                training_step_ret["discriminator_ret"][k]
+                .detach()
+                .cpu()
+                .flatten()
+                .tolist()
             )
 
     def log_epoch(self, epoch, training_step_ret):

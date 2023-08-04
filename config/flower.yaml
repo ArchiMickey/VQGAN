@@ -1,5 +1,5 @@
 project: vqgan
-name: vqgan-flower
+name: vqgan-flower-v3
 
 train_params:
   seed: 42
@@ -9,7 +9,7 @@ train_params:
   optimizer:
     use_8bit: true
     lr: 4.5e-6
-  disc_start: 10000
+  disc_start: 40000
 
 data:
   paths:
@@ -17,20 +17,22 @@ data:
   img_size: 128
 
 model:
-  model_ckpt: null 
+  model_ckpt: /home/archimickey/Projects/VQGAN/checkpoints/20230803_024603/checkpoint_10000.pt
   loading_modules:
     - vqvae
   vqvae:
-    dim: 128
-    dim_mults: [1, 1, 1, 2, 2, 4]
-    resnet_block_groups: 8 
+    dim: 64
+    dim_mults: [1, 1, 2, 4, 8]
+    resnet_block_groups: 16
     codebook_dim: 512
     codebook_size: 1024
   discriminator:
-    dim: 64
-    dim_mults: [1, 2, 4, 8]
-    channels: 3
-  perceptual_weight: 1
+    input_nc: 3
+    ndf: 64
+    n_layers: 3
+  loss:
+    perceptual_weight: 1
+    adv_weight: 0.2
 
 logger:
   project: ${project}

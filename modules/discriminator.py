@@ -1,42 +1,105 @@
+import functools
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
-class Discriminator(nn.Module):
-    def __init__(self, dim, dim_mults=(1, 2, 4, 8), channels=3):
-        super().__init__()
-        self.channels = channels
-        init_channels = channels
+try:
+    from modules.util import ActNorm
+except ModuleNotFoundError:
+    from util import ActNorm
 
-        dims = [init_channels, *map(lambda m: dim * m, dim_mults)]
-        in_out = list(zip(dims[:-1], dims[1:]))
 
-        self.blocks = nn.ModuleList([])
-        for dim_in, dim_out in in_out:
-            is_last = dim_out == dims[-1]
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find("BatchNorm") != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
 
-            self.blocks.append(
-                nn.Sequential(
-                    nn.Conv2d(
-                        dim_in, dim_out, 4, 2 if not is_last else 1, 1, bias=False
-                    ),
-                    nn.BatchNorm2d(dim_out),
-                    nn.LeakyReLU(0.2, True),
-                )
-            )
-        self.blocks.append(nn.Conv2d(dims[-1], 1, 4, 1, 1))
 
-    def forward(self, x):
-        for block in self.blocks:
-            x = block(x)
-        return x
+def hinge_d_loss(logits_real, logits_fake):
+    loss_real = torch.mean(F.relu(1.0 - logits_real))
+    loss_fake = torch.mean(F.relu(1.0 + logits_fake))
+    d_loss = 0.5 * (loss_real + loss_fake)
+    return d_loss
+
+
+class NLayerDiscriminator(nn.Module):
+    """Defines a PatchGAN discriminator as in Pix2Pix
+    --> see https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
+    """
+
+    def __init__(self, input_nc=3, ndf=64, n_layers=3, use_actnorm=False):
+        """Construct a PatchGAN discriminator
+        Parameters:
+            input_nc (int)  -- the number of channels in input images
+            ndf (int)       -- the number of filters in the last conv layer
+            n_layers (int)  -- the number of conv layers in the discriminator
+            norm_layer      -- normalization layer
+        """
+        super(NLayerDiscriminator, self).__init__()
+        if not use_actnorm:
+            norm_layer = nn.BatchNorm2d
+        else:
+            norm_layer = ActNorm
+        if (
+            type(norm_layer) == functools.partial
+        ):  # no need to use bias as BatchNorm2d has affine parameters
+            use_bias = norm_layer.func != nn.BatchNorm2d
+        else:
+            use_bias = norm_layer != nn.BatchNorm2d
+
+        kw = 4
+        padw = 1
+        sequence = [
+            nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw),
+            nn.LeakyReLU(0.2, True),
+        ]
+        nf_mult = 1
+        nf_mult_prev = 1
+        for n in range(1, n_layers):  # gradually increase the number of filters
+            nf_mult_prev = nf_mult
+            nf_mult = min(2**n, 8)
+            sequence += [
+                nn.Conv2d(
+                    ndf * nf_mult_prev,
+                    ndf * nf_mult,
+                    kernel_size=kw,
+                    stride=2,
+                    padding=padw,
+                    bias=use_bias,
+                ),
+                norm_layer(ndf * nf_mult),
+                nn.LeakyReLU(0.2, True),
+            ]
+
+        nf_mult_prev = nf_mult
+        nf_mult = min(2**n_layers, 8)
+        sequence += [
+            nn.Conv2d(
+                ndf * nf_mult_prev,
+                ndf * nf_mult,
+                kernel_size=kw,
+                stride=1,
+                padding=padw,
+                bias=use_bias,
+            ),
+            norm_layer(ndf * nf_mult),
+            nn.LeakyReLU(0.2, True),
+        ]
+
+        sequence += [
+            nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)
+        ]  # output 1 channel prediction map
+        self.main = nn.Sequential(*sequence)
+
+    def forward(self, input):
+        """Standard forward."""
+        return self.main(input)
 
 
 if __name__ == "__main__":
-    import torch
-    from icecream import install
-
-    install()
-
-    disc = Discriminator(64)
-    x = torch.randn(1, 3, 256, 256)
-    ic(disc(x).shape)
+    model = NLayerDiscriminator()
+    print(model)

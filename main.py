@@ -2,6 +2,7 @@ import hydra
 from tqdm import tqdm
 from bitsandbytes.optim import Adam8bit
 from torch.optim import Adam
+from torch.optim.lr_scheduler import MultiStepLR
 import torch
 import lightning as L
 
@@ -9,7 +10,7 @@ from icecream import install
 
 install()
 
-from modules.vqgan import VQGAN
+from model.vqgan import VQGAN
 from dataset import ImageDataset
 from logger import Logger
 from loguru import logger as console_logger
@@ -60,6 +61,9 @@ def main(config):
         lr=lr,
         betas=(0.5, 0.9),
     )
+    
+    scheduler_g = MultiStepLR(optimizer_g, milestones=[50000, 100000, 150000], gamma=0.5)
+    scheduler_d = MultiStepLR(optimizer_d, milestones=[50000, 100000, 150000], gamma=0.5)
 
     model, optimizer_g, optimizer_d = fabric.setup(model, optimizer_g, optimizer_d)
 
@@ -78,6 +82,13 @@ def main(config):
                     "batch_idx": batch_idx,
                     "epoch": epoch,
                 }
+
+                if global_step >= train_params["disc_start"] and not model.loss.use_adv:
+                    console_logger.info(
+                        f"Start using discriminator at step {global_step}"
+                    )
+                    model.loss.enable_adv()
+
                 generator_ret = model.generator_step(x)
                 ret |= {"generator_ret": generator_ret}
 
@@ -101,12 +112,10 @@ def main(config):
                     optimizer_g.zero_grad()
                     optimizer_d.zero_grad()
                     
+                    scheduler_g.step()
+                    scheduler_d.step()
+
                     global_step += 1
-                    if global_step >= train_params["disc_start"] and not model.use_adv:
-                        console_logger.info(
-                            f"Start using discriminator at step {global_step}"
-                        )
-                        model.enable_adv()
 
                 ret |= {
                     "global_step": global_step,
