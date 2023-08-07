@@ -1,36 +1,40 @@
 project: vqgan
-name: vqgan-flower-v3
-stage: vqgan
+name: vqtransformer-flower
+stage: transformer
 
 train_params:
   seed: 42
-  batch_size: 8
-  grad_accumulation: 4
+  batch_size: 64
+  grad_accumulation: 24
   precision: bf16-mixed
   optimizer:
     use_8bit: true
-    lr: 4.5e-6
-  disc_start: 40000
+    lr: 2e-4
+    warmup_steps: 16000
 
 data:
   paths:
     - /home/archimickey/Projects/VQGAN/data/102flower/edited
   img_size: 128
+  repeat: 80
 
 model:
-  model_ckpt: /home/archimickey/Projects/VQGAN/checkpoints/20230803_024603/checkpoint_10000.pt
-  loading_modules:
-    - vqvae
+  vqvae_ckpt: /home/archimickey/Projects/VQGAN/checkpoints/checkpoint_60000.pt
+  sos_token: 0
+  pkeep: 0.5
   vqvae:
     dim: 64
     dim_mults: [1, 1, 2, 4, 8]
     resnet_block_groups: 16
     codebook_dim: 512
     codebook_size: 1024
-  discriminator:
-    input_nc: 3
-    ndf: 64
-    n_layers: 3
+  transformer:
+    vocab_size: ${model.vqvae.codebook_size}
+    block_size: 512
+    n_layer: 24
+    n_head: 16
+    n_embd: 1024
+
   loss:
     perceptual_weight: 1
     adv_weight: 0.2
@@ -41,10 +45,4 @@ logger:
   save_interval: 10000
   log_img_interval: 1
   loss_names:
-    - generator/recon_loss
-    - generator/perceptual_loss
-    - generator/perceptual_recon_loss
-    - generator/commit_loss
-    - generator/adv_loss
-    - generator/total_loss
-    - discriminator/loss
+    - loss

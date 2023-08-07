@@ -1,6 +1,6 @@
 project: vqgan
-name: vqgan-flower-v3
-stage: vqgan
+name: taming-transformer
+stage: transformer
 
 train_params:
   seed: 42
@@ -10,7 +10,6 @@ train_params:
   optimizer:
     use_8bit: true
     lr: 4.5e-6
-  disc_start: 40000
 
 data:
   paths:
@@ -18,19 +17,22 @@ data:
   img_size: 128
 
 model:
-  model_ckpt: /home/archimickey/Projects/VQGAN/checkpoints/20230803_024603/checkpoint_10000.pt
-  loading_modules:
-    - vqvae
+  vqvae_ckpt: /home/archimickey/Projects/VQGAN/checkpoints/checkpoint_60000.pt
+  sos_token: 0
+  pkeep: 0.5
   vqvae:
     dim: 64
     dim_mults: [1, 1, 2, 4, 8]
     resnet_block_groups: 16
     codebook_dim: 512
     codebook_size: 1024
-  discriminator:
-    input_nc: 3
-    ndf: 64
-    n_layers: 3
+  transformer:
+    vocab_size: ${model.vqvae.codebook_size}
+    block_size: 512
+    n_layer: 24
+    n_head: 16
+    n_embd: 1024
+
   loss:
     perceptual_weight: 1
     adv_weight: 0.2
@@ -41,10 +43,4 @@ logger:
   save_interval: 10000
   log_img_interval: 1
   loss_names:
-    - generator/recon_loss
-    - generator/perceptual_loss
-    - generator/perceptual_recon_loss
-    - generator/commit_loss
-    - generator/adv_loss
-    - generator/total_loss
-    - discriminator/loss
+    - transformer/loss

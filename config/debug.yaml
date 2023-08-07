@@ -1,5 +1,6 @@
 project: vqgan
-name: vqgan2
+name: vqgan3
+stage: vqgan
 
 train_params:
   seed: 42
@@ -9,7 +10,7 @@ train_params:
   optimizer:
     use_8bit: true
     lr: 4.5e-6
-  disc_start: 0
+  disc_start: 10000
 
 data:
   paths:
@@ -17,14 +18,14 @@ data:
   img_size: 256
 
 model:
-  model_ckpt: /home/archimickey/Projects/VQGAN/checkpoints/checkpoint_10000.pt
+  model_ckpt: null 
   loading_modules:
     - vqvae
   vqvae:
-    dim: 32
+    dim: 64
     dim_mults: [1, 2, 4, 8]
-    resnet_block_groups: 8
-    codebook_dim: 256 
+    resnet_block_groups: 8 
+    codebook_dim: 512
     codebook_size: 1024
   discriminator:
     dim: 64

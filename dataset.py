@@ -7,7 +7,7 @@ from loguru import logger
 
 
 class ImageDataset(Dataset):
-    def __init__(self, paths, img_size=None):
+    def __init__(self, paths, img_size=None, repeat=1):
         super(ImageDataset, self).__init__()
 
         self.paths = paths
@@ -19,15 +19,16 @@ class ImageDataset(Dataset):
         self.images.sort()
 
         self.img_size = img_size
+        self.repeat = repeat
         self.transform = Compose(
             [Resize(img_size), ToTensor(), Normalize((0.5,), (0.5,))]
         )
 
     def __len__(self):
-        return len(self.images)
+        return len(self.images) * self.repeat
 
     def __getitem__(self, index):
-        image = Image.open(self.images[index])
+        image = Image.open(self.images[index % len(self.images)])
         image = self.transform(image)
         return image
 

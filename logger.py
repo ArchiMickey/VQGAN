@@ -47,18 +47,27 @@ class Logger:
         return x
 
     def log_img(self, training_step_ret):
-        x = training_step_ret["generator_ret"]["x"]
-        x_hat = training_step_ret["generator_ret"]["x_hat"]
-        x = self.normalize_0_1(x)
-        x_hat = x_hat.clamp(-1, 1)
-        x_hat = self.normalize_0_1(x_hat)
+        if "transformer_ret" in training_step_ret.keys():
+            x = training_step_ret["x"]
+            if len(x) > 4:
+                x = x[:4]
+            model = training_step_ret["model"]
+            _, img = model.log_images(x)
+            return wandb.Image(img)
+            
+        else:
+            x = training_step_ret["generator_ret"]["x"]
+            x_hat = training_step_ret["generator_ret"]["x_hat"]
+            x = self.normalize_0_1(x)
+            x_hat = x_hat.clamp(-1, 1)
+            x_hat = self.normalize_0_1(x_hat)
 
-        b, c, h, w = x.shape
-        canvas = Image.new("RGB", (w * 2, h * b))
-        for i in range(x.shape[0]):
-            canvas.paste(self.transform(x[i]), (0, i * h))
-            canvas.paste(self.transform(x_hat[i]), (w, i * h))
-        return wandb.Image(canvas)
+            b, c, h, w = x.shape
+            canvas = Image.new("RGB", (w * 2, h * b))
+            for i in range(x.shape[0]):
+                canvas.paste(self.transform(x[i]), (0, i * h))
+                canvas.paste(self.transform(x_hat[i]), (w, i * h))
+            return wandb.Image(canvas)
 
     def save_checkpoint(self, training_step_ret):
         model = training_step_ret["model"]
@@ -111,14 +120,15 @@ class Logger:
             self.loss_list[k].append(v.item())
             self.accumulated_ret["losses"][k].append(v.item())
 
-        for k in ["disc_real", "disc_fake"]:
-            self.accumulated_ret["disc"][k].extend(
-                training_step_ret["discriminator_ret"][k]
-                .detach()
-                .cpu()
-                .flatten()
-                .tolist()
-            )
+        if "discrminator_ret" in training_step_ret.keys():
+            for k in ["disc_real", "disc_fake"]:
+                self.accumulated_ret["disc"][k].extend(
+                    training_step_ret["discriminator_ret"][k]
+                    .detach()
+                    .cpu()
+                    .flatten()
+                    .tolist()
+                )
 
     def log_epoch(self, epoch, training_step_ret):
         self.epoch = epoch
