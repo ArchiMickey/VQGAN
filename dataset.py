@@ -7,7 +7,7 @@ from loguru import logger
 
 
 class ImageDataset(Dataset):
-    def __init__(self, paths, img_size=None, repeat=1):
+    def __init__(self, paths, img_size=None, repeat=1, **kwargs):
         super(ImageDataset, self).__init__()
 
         self.paths = paths

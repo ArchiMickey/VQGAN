@@ -16,20 +16,27 @@ class Logger:
         self.log_img_interval = logger_config["log_img_interval"]
         self.save_interval = logger_config["save_interval"]
         self.loss_list = {}
-        self.accumulated_ret = {"losses": {}, "disc": {}}
+        self.accumulated_ret = {"losses": {}, "disc": {}, "lrs": {}}
         self.loss_names = logger_config["loss_names"]
+
+        self.stage = config["stage"]
         for name in self.loss_names:
             self.loss_list[name] = []
             self.accumulated_ret["losses"][name] = []
-        for k in ["disc_real", "disc_fake"]:
-            self.accumulated_ret["disc"][k] = []
+        self.accumulated_ret["lrs"]["lr_g"] = []
+
+        if self.stage == "vqgan":
+            for k in ["disc_real", "disc_fake"]:
+                self.accumulated_ret["disc"][k] = []
+            self.accumulated_ret["lrs"]["lr_d"] = []
+
         now = datetime.now()
         dirname = now.strftime("%Y%m%d_%H%M%S")
         self.checkpoint_path = os.path.join(logger_config["checkpoint_path"], dirname)
 
         self.global_step = 0
         self.epoch = 0
-        
+
         wandb.init(
             project=config["project"],
             name=config["name"],
@@ -47,14 +54,14 @@ class Logger:
         return x
 
     def log_img(self, training_step_ret):
-        if "transformer_ret" in training_step_ret.keys():
+        if self.stage == "transformer":
             x = training_step_ret["x"]
             if len(x) > 4:
                 x = x[:4]
             model = training_step_ret["model"]
             _, img = model.log_images(x)
             return wandb.Image(img)
-            
+
         else:
             x = training_step_ret["generator_ret"]["x"]
             x_hat = training_step_ret["generator_ret"]["x_hat"]
@@ -71,14 +78,23 @@ class Logger:
 
     def save_checkpoint(self, training_step_ret):
         model = training_step_ret["model"]
-        checkpoint = {
-            "vqvae": model.vqvae.state_dict(),
-            "discriminator": model.discriminator.state_dict(),
-            "optimizer_g": training_step_ret["optimizer_g"].state_dict(),
-            "optimizer_d": training_step_ret["optimizer_d"].state_dict(),
-            "epoch": self.epoch,
-            "global_step": self.global_step,
-        }
+        if self.stage == "vqgan":
+            checkpoint = {
+                "vqvae": model.vqvae.state_dict(),
+                "discriminator": model.discriminator.state_dict(),
+                "optimizer_g": training_step_ret["optimizer_g"].state_dict(),
+                "optimizer_d": training_step_ret["optimizer_d"].state_dict(),
+                "epoch": self.epoch,
+                "global_step": self.global_step,
+            }
+        elif self.stage == "transformer":
+            checkpoint = {
+                "vqvae": model.vqvae.state_dict(),
+                "transformer": model.transformer.state_dict(),
+                "optimizer": training_step_ret["optimizer"].state_dict(),
+                "epoch": self.epoch,
+                "global_step": self.global_step,
+            }
 
         if not os.path.exists(self.checkpoint_path):
             os.makedirs(self.checkpoint_path)
@@ -86,7 +102,9 @@ class Logger:
         console_logger.info(f"Saving checkpoint to {self.checkpoint_path}")
         torch.save(
             checkpoint,
-            os.path.join(self.checkpoint_path, f"checkpoint_{self.global_step}.pt"),
+            os.path.join(
+                self.checkpoint_path, f"{self.stage}_checkpoint_{self.global_step}.pt"
+            ),
         )
 
     def log_to_wandb(self):
@@ -94,17 +112,21 @@ class Logger:
             "global_step": self.global_step,
             "epoch": self.epoch,
         }
-        for k in self.accumulated_ret["losses"].keys():
-            log_dict[k] = sum(self.accumulated_ret["losses"][k]) / len(
-                self.accumulated_ret["losses"][k]
-            )
+        for k, v in self.accumulated_ret["losses"].items():
+            log_dict[k] = sum(v) / len(v)
             self.accumulated_ret["losses"][k].clear()
 
-        for k in ["disc_real", "disc_fake"]:
-            log_dict[f"discriminator/{k}"] = wandb.Histogram(
-                self.accumulated_ret["disc"][k]
-            )
-            self.accumulated_ret["disc"][k].clear()
+        if self.stage == "vqgan":
+            for k in ["disc_real", "disc_fake"]:
+                log_dict[f"discriminator/{k}"] = wandb.Histogram(
+                    self.accumulated_ret["disc"][k]
+                )
+                self.accumulated_ret["disc"][k].clear()
+
+        for k, v in self.accumulated_ret["lrs"].items():
+            log_dict[f"{k}"] = sum(v) / len(v)
+            self.accumulated_ret["lrs"][k].clear()
+
         wandb.log(log_dict)
 
     def log_iter(self, training_step_ret):
@@ -115,12 +137,14 @@ class Logger:
             if self.global_step != 0 and self.global_step % self.save_interval == 0:
                 self.save_checkpoint(training_step_ret)
 
+        # Log losses
         losses = training_step_ret["losses"]
         for k, v in losses.items():
             self.loss_list[k].append(v.item())
             self.accumulated_ret["losses"][k].append(v.item())
 
-        if "discrminator_ret" in training_step_ret.keys():
+        # Log discriminator output
+        if self.stage == "vqgan":
             for k in ["disc_real", "disc_fake"]:
                 self.accumulated_ret["disc"][k].extend(
                     training_step_ret["discriminator_ret"][k]
@@ -129,6 +153,20 @@ class Logger:
                     .flatten()
                     .tolist()
                 )
+
+        # Log learning rate
+        if self.stage == "vqgan":
+            optimizer_g = training_step_ret["optimizer_g"]
+            optimizer_d = training_step_ret["optimizer_d"]
+            self.accumulated_ret["lrs"]["lr_g"].append(
+                optimizer_g.param_groups[0]["lr"]
+            )
+            self.accumulated_ret["lrs"]["lr_d"].append(
+                optimizer_d.param_groups[0]["lr"]
+            )
+        elif self.stage == "transformer":
+            optimizer = training_step_ret["optimizer"]
+            self.accumulated_ret["lrs"]["lr_g"].append(optimizer.param_groups[0]["lr"])
 
     def log_epoch(self, epoch, training_step_ret):
         self.epoch = epoch

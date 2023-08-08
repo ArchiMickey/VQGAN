@@ -5,11 +5,11 @@ stage: transformer
 train_params:
   seed: 42
   batch_size: 64
-  grad_accumulation: 24
+  grad_accumulation: 8
   precision: bf16-mixed
   optimizer:
     use_8bit: true
-    lr: 2e-4
+    lr: 1e-4
     warmup_steps: 16000
 
 data:
@@ -17,9 +17,10 @@ data:
     - /home/archimickey/Projects/VQGAN/data/102flower/edited
   img_size: 128
   repeat: 80
+  num_workers: 6
 
 model:
-  vqvae_ckpt: /home/archimickey/Projects/VQGAN/checkpoints/checkpoint_60000.pt
+  vqvae_ckpt: /home/archimickey/Projects/VQGAN/checkpoints/vqgan_checkpoint_60000.pt
   sos_token: 0
   pkeep: 0.5
   vqvae:

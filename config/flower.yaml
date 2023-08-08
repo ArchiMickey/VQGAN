@@ -9,7 +9,7 @@ train_params:
   precision: bf16-mixed
   optimizer:
     use_8bit: true
-    lr: 4.5e-6
+    lr: 2e-4
   disc_start: 40000
 
 data:

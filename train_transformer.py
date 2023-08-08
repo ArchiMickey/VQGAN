@@ -31,7 +31,7 @@ def train_transformer(config):
     model = VQTransformer(config["model"])
     dataset = ImageDataset(**config["data"])
     dataloader = fabric.setup_dataloaders(
-        dataset.get_dataloader(train_params["batch_size"], True, 8)
+        dataset.get_dataloader(train_params["batch_size"], True, config["data"]["num_workers"])
     )
 
     # Setup optimizer
@@ -41,9 +41,6 @@ def train_transformer(config):
         console_logger.info("Using 8bit optimizer")
 
     lr = train_params["optimizer"]["lr"]
-    # lr_ratio = train_params["batch_size"] * train_params["grad_accumulation"]
-    # console_logger.info(f"Setting learning rate to {lr} * {lr_ratio} = {lr * lr_ratio}")
-    # lr = lr * lr_ratio
 
     optimizer = base_optim(model.parameters(), lr=lr)
 
