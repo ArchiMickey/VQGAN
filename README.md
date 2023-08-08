@@ -1,5 +1,6 @@
 # VQGAN
-This is an implementation of VQGAN from the paper [Taming Transformers for High-Resolution Image Synthesis](https://arxiv.org/abs/2012.09841) by Patrick Esser, Robin Rombach, Björn Ommer. The purpose of this repo is to give a clean and simple implementation of VQGAN that can be easily understood and modified. \
+This is an implementation of VQGAN from the paper [Taming Transformers for High-Resolution Image Synthesis](https://arxiv.org/abs/2012.09841) by Patrick Esser, Robin Rombach, Björn Ommer. The purpose of this repo is to give a clean and simple implementation of VQGAN that can be easily understood and modified.
+## Training details
 The training of VQGAN consists of two parts:
 1. Training the VQGAN model
    The difficult part is to balance the training of the generator and discriminator. The generator should be trained to generate realistic images, while the discriminator should be trained to distinguish between real and fake images. The discriminator should not be too good, otherwise the generator will not be able to generate realistic images. This part can be done by tuning the weights of adversarial loss(`disc_weight`).
@@ -7,7 +8,7 @@ The training of VQGAN consists of two parts:
    The taming transformer is trained to generate images from the codebook of VQVAE. A pretrained VQVAE will be used and frozen during the training of the taming transformer. A GPT2 model is used to sample latent vectors from the codebook. The latent vectors are then fed into the taming transformer to generate images. A lower learning rate should be used to train the GPT2 model (e.g. `1e-4` with noam scheduler).
 ## Results
 ### VQGAN
-The right image is the reconstructed image from VQGAN.
+The right image is the reconstructed image from VQGAN. \
 ![VQVAE output](assets/vqgan.png)
 ### Taming Transformer
 Content of each row:
